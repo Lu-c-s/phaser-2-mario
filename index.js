@@ -1,9 +1,3 @@
-/*
- * Warped City Demo Code
- * by  @ansimuz
- * Get more free assets and code like these at: www.pixelgameart.org
- * Visit my store for premium content at https://ansimuz.itch.io/
- * */
 var game;
 var player;
 var gameWidth = 384;
@@ -30,6 +24,7 @@ window.onload = function() {
   game.state.add("TitleScreen", titleScreen);
   game.state.add("GameOver", gameOver);
   game.state.add("PlayGame", playGame);
+  //game.state.add("PlayGame2",playGame2)
   //
   game.state.start("Boot");
 };
@@ -84,6 +79,14 @@ preload.prototype = {
       16,
       16
     );
+
+    game.load.spritesheet(
+      "tiles2",
+      "assets/maps/Overworld.png",
+      16,
+      16,
+    )
+
     game.load.spritesheet(
       "goomba",
       "assets/maps/goomba_nmbtds.png",
@@ -109,6 +112,14 @@ preload.prototype = {
       null,
       Phaser.Tilemap.TILED_JSON
     );
+
+    game.load.tilemap(
+      "level2",
+      "assets/maps/map2.json",
+      null,
+      Phaser.Tilemap.TILED_JSON
+    )
+
   },
   create: function() {
     //this.game.state.start('PlayGame');
@@ -205,8 +216,12 @@ playGame.prototype = {
     game.physics.startSystem(Phaser.Physics.ARCADE);
 
     game.stage.backgroundColor = "#5c94fc";
+    texts = game.add.group();
 
-    scoreText = game.add.text(gameWidth/2,10,"score: 0",{ font: "13px Arial", fill: "#ffffff", align: "left" });
+    scoreText = game.add.text( 10 ,10,"0",{ font: "18px Arial", fill: "#ffffff", align: "left" });
+    texts.add(scoreText)
+    game.world.bringToTop(texts)
+
     scoreText.fixedToCamera = true;
 
     map = game.add.tilemap("level");
@@ -275,6 +290,10 @@ playGame.prototype = {
     game.physics.arcade.overlap(player, goombas, goombaOverlap);
     game.physics.arcade.overlap(player, coins, coinOverlap);
 
+    console.log("pos x",player.position.x)
+    console.log("pos y",player.position.y)
+    console.log("Cursor",cursors)
+
     if (player.body.enable) {
       player.body.velocity.x = 0;
       if (cursors.left.isDown) {
@@ -302,13 +321,175 @@ playGame.prototype = {
         else player.frame = 12;
       }
     }
+
+    if(player.position.x >= 3024.5 &&
+      player.position.x <= 3044.5
+      && player.position.y === 144 && 
+      cursors.down.isDown) {
+        player.body.enable = false;
+        
+        let downPlayer = setInterval(() => {
+          player.y += 2;
+          if(player.y > 240){
+            clearInterval(downPlayer)
+          }
+        },200)
+
+
+
+        this.game.state.start("PlayGame2")
+      }
   }
 };
+
+
+
+/* var playGame2 = function(game) {};
+playGame2.prototype = {
+  create: function() {
+    this.startAudios();
+    score = 0;
+    Phaser.Canvas.setImageRenderingCrisp(game.canvas);
+    game.scale.pageAlignHorizontally = true;
+    game.scale.pageAlignVertically = true;
+    game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+
+    game.stage.backgroundColor = "#0a1323";
+    texts = game.add.group();
+
+    scoreText = game.add.text( 10 ,10,"0",{ font: "18px Arial", fill: "#ffffff", align: "left" });
+    texts.add(scoreText)
+    game.world.bringToTop(texts)
+
+    scoreText.fixedToCamera = true;
+
+    map = game.add.tilemap("level2");
+    map.addTilesetImage("tiles2", "tiles2");
+    map.setCollisionBetween(3, 12, true, "solid");
+
+    map.createLayer("background");
+
+    layer = map.createLayer("solid");
+    layer.resizeWorld();
+
+    // coins = game.add.group();
+    // coins.enableBody = true;
+    // map.createFromTiles(2, null, "coin", "stuff", coins);
+    // coins.callAll(
+    //   "animations.add",
+    //   "animations",
+    //   "spin",
+    //   [0, 0, 1, 2],
+    //   3,
+    //   true
+    // );
+    // coins.callAll("animations.play", "animations", "spin");
+
+    // goombas = game.add.group();
+    // goombas.enableBody = true;
+    // map.createFromTiles(1, null, "goomba", "stuff", goombas);
+    // goombas.callAll("animations.add", "animations", "walk", [0, 1], 2, true);
+    // goombas.callAll("animations.play", "animations", "walk");
+    // goombas.setAll("body.bounce.x", 1);
+    // goombas.setAll("body.velocity.x", -20);
+    // goombas.setAll("body.gravity.y", 500);
+
+    player = game.add.sprite(16, game.world.height - 48, "mario");
+    game.physics.arcade.enable(player);
+    player.body.gravity.y = 370;
+    player.body.collideWorldBounds = true;
+    player.animations.add("walkRight", [1, 2, 3], 10, true);
+    player.animations.add("walkLeft", [8, 9, 10], 10, true);
+    player.goesRight = true;
+
+    game.camera.follow(player);
+
+    cursors = game.input.keyboard.createCursorKeys();
+  },
+
+  startAudios: function() {
+    // audios
+    // sound effects
+    this.audioJump = game.add.audio("jump")
+    coinAudio = game.add.audio("coin")
+    stompAudio = game.add.audio("stomp")
+    deadAudio = game.add.audio("dead")
+    // stop title music
+    titleMusic.stop();
+
+    //music
+    music = game.add.audio("music");
+    music.loop = true;
+    music.play();
+  },
+
+  update: function() {
+    game.physics.arcade.collide(player, layer);
+    game.physics.arcade.collide(goombas, layer);
+    game.physics.arcade.overlap(player, goombas, goombaOverlap);
+    game.physics.arcade.overlap(player, coins, coinOverlap);
+
+    console.log("pos x",player.position.x)
+    console.log("pos y",player.position.y)
+    console.log("Cursor",cursors)
+
+    if (player.body.enable) {
+      player.body.velocity.x = 0;
+      if (cursors.left.isDown) {
+        player.body.velocity.x = -90;
+        player.animations.play("walkLeft");
+        player.goesRight = false;
+      } else if (cursors.right.isDown) {
+        player.body.velocity.x = 90;
+        player.animations.play("walkRight");
+        player.goesRight = true;
+      } else {
+        player.animations.stop();
+        if (player.goesRight) player.frame = 0;
+        else player.frame = 7;
+      }
+
+      if (cursors.up.isDown && player.body.onFloor()) {
+        player.body.velocity.y = -190;
+        player.animations.stop();
+        this.audioJump.play();
+      }
+
+      if (player.body.velocity.y != 0) {
+        if (player.goesRight) player.frame = 5;
+        else player.frame = 12;
+      }
+    }
+
+    if(player.position.x >= 3024.5 &&
+      player.position.x <= 3044.5
+      && player.position.y === 144 && 
+      cursors.down.isDown) {
+        player.body.enable = false;
+        
+        let downPlayer = setInterval(() => {
+          player.y += 2;
+          if(player.y > 240){
+            clearInterval(downPlayer)
+          }
+        },200)
+
+        if(player.y > 240){
+          game.state.start("PlayGame2")
+        }
+
+
+
+        console.log("next ṕhase")
+      }
+  }
+}; */
 
 function coinOverlap(player, coin) {
   coin.kill();
   score += 1;
-  scoreText.text = 'score: ' + score;
+  scoreText.text = score;
   coinAudio.play();
 }
 
@@ -334,7 +515,14 @@ function goombaOverlap(player, goomba) {
          game.state.start("PlayGame");
          game.paused = false;
          player.body.enaled = true;
+         
+         let downPlayer = setInterval(() => {
+          player.y += 2;
+          if(player.y > 240){
+            clearInterval(downPlayer)
+          }
+        },200)
+
     },1000)
   }
 }
-
