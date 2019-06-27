@@ -16,6 +16,7 @@ var stompAudio
 var deadAudio
 var score = 0
 var scoreText
+var bossLives = -1;
 
 window.onload = function() {
   game = new Phaser.Game(gameWidth, gameHeight, Phaser.AUTO, "");
@@ -24,7 +25,7 @@ window.onload = function() {
   game.state.add("TitleScreen", titleScreen);
   game.state.add("GameOver", gameOver);
   game.state.add("PlayGame", playGame);
-  //game.state.add("PlayGame2",playGame2)
+  game.state.add("PlayGame2",playGame2)
   //
   game.state.start("Boot");
 };
@@ -72,6 +73,7 @@ preload.prototype = {
     game.load.audio('coin', ['assets/sounds/Mario-coin-sound.mp3']);
     game.load.audio('stomp', ['assets/sounds/smb_stomp.wav']);
     game.load.audio('dead', ['assets/sounds/smb_mariodie.wav'])
+    game.load.audio('complete', ['assets/sounds/complete.mp3'])
 
     game.load.spritesheet(
       "tiles",
@@ -89,6 +91,12 @@ preload.prototype = {
 
     game.load.spritesheet(
       "goomba",
+      "assets/maps/goomba_nmbtds.png",
+      16,
+      16
+    );
+    game.load.spritesheet(
+      "goomba_boss",
       "assets/maps/goomba_nmbtds.png",
       16,
       16
@@ -342,11 +350,10 @@ playGame.prototype = {
   }
 };
 
-
-
-/* var playGame2 = function(game) {};
+var playGame2 = function(game) {};
 playGame2.prototype = {
   create: function() {
+    console.log("Started second phase")
     this.startAudios();
     score = 0;
     Phaser.Canvas.setImageRenderingCrisp(game.canvas);
@@ -364,8 +371,8 @@ playGame2.prototype = {
 
     scoreText.fixedToCamera = true;
 
-    map = game.add.tilemap("level2");
-    map.addTilesetImage("tiles2", "tiles2");
+    map = game.add.tilemap("level");
+    map.addTilesetImage("tiles", "tiles");
     map.setCollisionBetween(3, 12, true, "solid");
 
     map.createLayer("background");
@@ -373,27 +380,25 @@ playGame2.prototype = {
     layer = map.createLayer("solid");
     layer.resizeWorld();
 
-    // coins = game.add.group();
-    // coins.enableBody = true;
-    // map.createFromTiles(2, null, "coin", "stuff", coins);
-    // coins.callAll(
-    //   "animations.add",
-    //   "animations",
-    //   "spin",
-    //   [0, 0, 1, 2],
-    //   3,
-    //   true
-    // );
-    // coins.callAll("animations.play", "animations", "spin");
+    boss = game.add.sprite(350,game.world.height - 16*3 ,'goomba_boss')
+    
+    game.physics.arcade.enable(boss);
 
-    // goombas = game.add.group();
-    // goombas.enableBody = true;
-    // map.createFromTiles(1, null, "goomba", "stuff", goombas);
-    // goombas.callAll("animations.add", "animations", "walk", [0, 1], 2, true);
-    // goombas.callAll("animations.play", "animations", "walk");
-    // goombas.setAll("body.bounce.x", 1);
-    // goombas.setAll("body.velocity.x", -20);
-    // goombas.setAll("body.gravity.y", 500);
+    boss.animations.add('walk',[0,1],2,true)
+    boss.animations.play('walk')
+    
+    console.log(boss)
+    
+    boss.body.bounce.x = 1
+    boss.body.velocity.x = -60;
+    boss.body.gravity.y = 1000
+
+    //goombas.callAll("animations.add", "animations", "walk", [0, 1], 2, true);
+    //goombas.callAll("animations.play", "animations", "walk");
+    //goombas.setAll("body.bounce.x", 1);
+   // goombas.setAll("body.velocity.x", -20);
+    //goombas.setAll("body.gravity.y", 500);
+
 
     player = game.add.sprite(16, game.world.height - 48, "mario");
     game.physics.arcade.enable(player);
@@ -415,6 +420,7 @@ playGame2.prototype = {
     coinAudio = game.add.audio("coin")
     stompAudio = game.add.audio("stomp")
     deadAudio = game.add.audio("dead")
+    completeAudio = game.add.audio("complete")
     // stop title music
     titleMusic.stop();
 
@@ -426,14 +432,9 @@ playGame2.prototype = {
 
   update: function() {
     game.physics.arcade.collide(player, layer);
-    game.physics.arcade.collide(goombas, layer);
-    game.physics.arcade.overlap(player, goombas, goombaOverlap);
-    game.physics.arcade.overlap(player, coins, coinOverlap);
-
-    console.log("pos x",player.position.x)
-    console.log("pos y",player.position.y)
-    console.log("Cursor",cursors)
-
+    game.physics.arcade.collide(boss, layer);
+    game.physics.arcade.overlap(player, boss, bossOverlap);
+    
     if (player.body.enable) {
       player.body.velocity.x = 0;
       if (cursors.left.isDown) {
@@ -478,13 +479,9 @@ playGame2.prototype = {
         if(player.y > 240){
           game.state.start("PlayGame2")
         }
-
-
-
-        console.log("next ṕhase")
       }
   }
-}; */
+}; 
 
 function coinOverlap(player, coin) {
   coin.kill();
@@ -503,6 +500,58 @@ function goombaOverlap(player, goomba) {
     game.time.events.add(Phaser.Timer.SECOND, function() {
       goomba.kill();      
     });
+  } else {
+    deadAudio.play();
+    player.frame = 6;
+    player.body.enable = false;
+    player.animations.stop();
+    game.time.events.add(Phaser.Timer.SECOND * 3, function() {
+      game.paused = true;
+    });
+    setTimeout(() => {
+         game.state.start("PlayGame");
+         game.paused = false;
+         player.body.enaled = true;
+         
+         let downPlayer = setInterval(() => {
+          player.y += 2;
+          if(player.y > 240){
+            clearInterval(downPlayer)
+          }
+        },200)
+
+    },1000)
+  }
+}
+
+function bossOverlap(player,boss){
+  console.log("ppp",player.body.touching)
+  if (player.body.touching.down) {
+    stompAudio.play(); 
+    player.body.velocity.y = -80;
+    if(bossLives < 0){
+      
+      boss.kill();      
+      var text = game.add.text(320 ,80, "YOU WIN",{ font: "18px Arial", fill: "#ffffff", align: "left" });
+      music.stop();
+      completeAudio.play();
+      text.anchor.setTo(0.5);
+      setTimeout(() => {
+        game.state.start("TitleScreen")
+        console.log("called")
+      },3000)   
+        
+      
+    } else {
+      bossLives--
+      console.log(boss)
+      boss.tint = 0xff0000;
+      setTimeout(() => {
+        boss.tint = 16777215
+      },100)
+
+    }
+  
   } else {
     deadAudio.play();
     player.frame = 6;
